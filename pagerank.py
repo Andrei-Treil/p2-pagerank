@@ -1,6 +1,7 @@
 import sys
 import gzip
 from collections import defaultdict
+import math
 
 '''
 linksFileGZ - gzipped file of links that you are analyzing.
@@ -11,18 +12,24 @@ pagerankFile - print out the list of pages with their calculated pagerank value 
 k - number of top pages that you print in those two files
 '''
 def main(linksFileGZ,lam,tau,inLinksFile,pagerankFile,k):
-    
+    #dictionary to count in links
+    in_links = defaultdict(int)
     #dictionary to store pages as keys and their outlinks in a list
     pages = defaultdict(list)
-    with gzip.open(linksFileGZ,'rt') as f:
-        for edge in f.readline().split():
-            pages[edge[0]].append(edge[1])
 
-    num_pages = len(pages.keys())
+    with gzip.open(linksFileGZ,'rt') as f:
+        for line in f:
+            edge = line.split()
+            in_links[edge[0]]
+            in_links[edge[1]] += 1
+            pages[edge[0]].append(edge[1])
+            pages[edge[1]]
+    
+
+    sites = pages.keys()
+    num_pages = len(sites)
     #current page rank estimate mapping pages to their ranks
-    curr_pr = defaultdict(lambda: 1/num_pages)
-    #resulting page rank estimate
-    res_pr = defaultdict(lambda: 1/num_pages)
+    curr_pr = dict.fromkeys(sites,1/num_pages)
 
     '''
     While page rank hasnt converged (defined by tau), set all entries in R = λ/|P|
@@ -31,26 +38,28 @@ def main(linksFileGZ,lam,tau,inLinksFile,pagerankFile,k):
     '''
     not_converged = True
     while(not_converged):
+        #resulting page rank estimate
+        res_pr = dict.fromkeys(sites,lam/num_pages)
         #loop thru all pages
-        for page,links in pages:
+        for page,links in pages.items():
             if len(links) == 0:
                 #do random jump
-                i = 1
+                res_pr = {p: r+((1-lam)*curr_pr[page])/num_pages for p,r in res_pr.items()}
             else:
                 for out_page in links:
-                    res_pr[out_page] += ((1-lam)*curr_pr[page])/len(out_page)
-
+                    #check if out_page is a valid page
+                    if out_page not in res_pr:
+                        continue
+                    #update pagerank
+                    res_pr[out_page] += ((1-lam)*curr_pr[page])/len(links)
+        
         #check convergence
+        if math.dist(res_pr.values(),curr_pr.values()) <= tau:
+            not_converged = False
+            return res_pr
 
-        #update pagerank
         curr_pr.update(res_pr)
 
-
-        return res_pr
-
-
-
-    return None
 
 
 
@@ -58,7 +67,7 @@ if __name__ == '__main__':
     #code from P2 instructions
     argv_len = len(sys.argv)
     #change back to links.srt.gz
-    inputFile = sys.argv[1] if argv_len >= 2 else "small.srt.gz"
+    inputFile = sys.argv[1] if argv_len >= 2 else "links-ireland.srt.gz"
     lambda_val = float(sys.argv[2]) if argv_len >=3 else 0.2
     tau = float(sys.argv[3]) if argv_len >=4 else 0.005
     inLinksFile = sys.argv[4] if argv_len >= 5 else "inlinks.txt"
