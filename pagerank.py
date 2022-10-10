@@ -17,17 +17,18 @@ def main(linksFileGZ,lam,tau,inLinksFile,pagerankFile,k):
     #dictionary to store pages as keys and their outlinks in a list
     pages = defaultdict(list)
 
-    with gzip.open(linksFileGZ,'rt') as f:
+    with gzip.open(linksFileGZ,'rt',encoding='utf8') as f:
         for line in f:
             edge = line.split()
             in_links[edge[0]]
             in_links[edge[1]] += 1
             pages[edge[0]].append(edge[1])
             pages[edge[1]]
-    
 
+    sorted_inlinks = dict(sorted(in_links.items(), key=lambda item: item[1], reverse=True))
     sites = pages.keys()
     num_pages = len(sites)
+
     #current page rank estimate mapping pages to their ranks
     curr_pr = dict.fromkeys(sites,1/num_pages)
 
@@ -56,18 +57,44 @@ def main(linksFileGZ,lam,tau,inLinksFile,pagerankFile,k):
         #check convergence
         if math.dist(res_pr.values(),curr_pr.values()) <= tau:
             not_converged = False
-            return res_pr
+            sorted_pr = dict(sorted(res_pr.items(), key=lambda item: item[1], reverse=True))
 
+        
         curr_pr.update(res_pr)
 
+    '''
+    Write top 100 pageranks to pagerank.txt
+    The list should be sorted in descending value of PageRank with each line having the format:
+    PageName<tab>Rank<tab>PageRank score
+    '''
+    with open('pagerank.txt','w') as f:
+        i = 1
+        for page,rank in sorted_pr.items():
+            f.write(page + "\t" + str(i) + "\t" + str(rank) + "\n")
+            if i == 100:
+                break
+            else:
+                i += 1
 
-
+    '''
+    Write top 100 pages having the most inlinks to inlinks.txt
+    The list should be sorted in descending frequency of inlink count with each line having the format:
+    PageName<tab>Rank<tab>inlinkeCount
+    '''
+    with open('inlinks.txt','w') as f:
+        i = 1
+        for page,count in sorted_inlinks.items():
+            f.write(page + "\t" + str(i) + "\t" + str(count) + "\n")
+            if i == 100:
+                break
+            else:
+                i += 1
 
 if __name__ == '__main__':
     #code from P2 instructions
     argv_len = len(sys.argv)
     #change back to links.srt.gz
-    inputFile = sys.argv[1] if argv_len >= 2 else "links-ireland.srt.gz"
+    inputFile = sys.argv[1] if argv_len >= 2 else "small.srt.gz"
     lambda_val = float(sys.argv[2]) if argv_len >=3 else 0.2
     tau = float(sys.argv[3]) if argv_len >=4 else 0.005
     inLinksFile = sys.argv[4] if argv_len >= 5 else "inlinks.txt"
